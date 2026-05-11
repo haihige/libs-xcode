@@ -24,6 +24,7 @@
 
 #import "GSXCBuildOperation.h"
 #import "PBXBuildFile.h"
+#import "GSXCBuildContext.h"
 
 @implementation GSXCBuildOperation
 
@@ -53,8 +54,34 @@
 
 - (void) main
 {
-  [_file build];
+  BOOL buildSucceeded = YES;
+  GSXCBuildContext *context = [GSXCBuildContext sharedBuildContext];
+
+  if ([[context objectForKey: @"BUILD_FAILED"] isEqualToString: @"YES"])
+    {
+      return;
+    }
+
+  if ([self isCancelled])
+    {
+      return;
+    }
+
+  NS_DURING
+    {
+      buildSucceeded = [_file build];
+    }
+  NS_HANDLER
+    {
+      buildSucceeded = NO;
+      NSLog(@"%@", [localException reason]);
+    }
+  NS_ENDHANDLER;
+
+  if (buildSucceeded == NO)
+    {
+      [context setObject: @"YES" forKey: @"BUILD_FAILED"];
+    }
 }
 
 @end
-

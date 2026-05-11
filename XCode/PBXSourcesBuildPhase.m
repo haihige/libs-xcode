@@ -62,6 +62,8 @@
   NSMutableArray *ops = [NSMutableArray array];
   NSEnumerator *en = nil;
   NSString *buildType = [config objectForKey: @"buildType"];
+
+  [ctx setObject: @"NO" forKey: @"BUILD_FAILED"];
   
   NSDebugLog(@"config = %@", config);
   if ([buildType isEqualToString: @"linear"] == YES || buildType == nil) // linear is the default
@@ -136,10 +138,30 @@
   // Handle the error...
   NS_DURING
     {
-      [_queue addOperations: ops waitUntilFinished: YES];
+      [_queue addOperations: ops waitUntilFinished: NO];
+      while ([_queue operationCount] > 0)
+        {
+          NSString *buildFailed = [ctx objectForKey: @"BUILD_FAILED"];
+
+          if ([buildFailed isEqualToString: @"YES"])
+            {
+              result = NO;
+              [_queue cancelAllOperations];
+              break;
+            }
+
+          [NSThread sleepForTimeInterval: 0.05];
+        }
+      [_queue waitUntilAllOperationsAreFinished];
+
+      if ([[ctx objectForKey: @"BUILD_FAILED"] isEqualToString: @"YES"])
+        {
+          result = NO;
+        }
     }
   NS_HANDLER
     {
+      result = NO;
       [_queue cancelAllOperations];
       NSLog(@"Compilation halted.");
     }
@@ -147,7 +169,7 @@
   
   xcputs("=== Sources Build Phase Completed");
 
-  // if (db != nil)
+  if (result)
     {
       [self link]; // generate the rest of the output file entries
     }
