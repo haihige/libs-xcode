@@ -670,7 +670,24 @@ static NSLock *lock = nil;
 	  [context setObject: @"YES" forKey: @"LINK_WITH_CPP"];
 	}
 
-      NSString *compiler = [self _compiler];
+      NSString *compiler;
+      if ([ft isEqualToString: @"sourcecode.c.c"])
+        {
+          // C: use CC, no ObjC flags
+          compiler = [NSString stringForEnvironmentVariable: @"CC"
+                                               defaultValue: @"`gnustep-config --variable=CC`"];
+        }
+      else if ([ft isEqualToString: @"sourcecode.cpp.cpp"])
+        {
+          // C++: use CXX, no ObjC flags
+          compiler = [NSString stringForEnvironmentVariable: @"CXX"
+                                               defaultValue: @"`gnustep-config --variable=CXX`"];
+        }
+      else
+        {
+          // ObjC or ObjC++: full gnustep-config flags
+          compiler = [self _compiler];
+        }
       NSString *buildPath = [proj_root stringByAppendingPathComponent: bp];
       NSArray *localHeaderPathsArray = [self _allSubdirsAtPath:@"."];
       NSString *fileName = [_path lastPathComponent];
