@@ -757,21 +757,170 @@ static NSLock *lock = nil;
           objCflags = @"";
 	}
 
-      NSString *std = [NSString stringForEnvironmentVariable: @"GCC_C_LANGUAGE_STANDARD"
-                                                defaultValue: @""];
-      if ([std length] > 0)
+      if ([ft isEqualToString: @"sourcecode.c.c"] ||
+          [ft isEqualToString: @"sourcecode.c.objc"])
         {
-	    if([std isEqualToString:@"compiler-default"] == YES)
-	    {
-		std = @"gnu99";
-	    }
-          objCflags = [NSString stringWithFormat: @"%@ -std=%@",
-                                objCflags, std];
+          id cStdSetting = [bs objectForKey: @"CLANG_C_LANGUAGE_STANDARD"];
+          NSString *std = @"";
+          if ([cStdSetting isKindOfClass: [NSString class]])
+            {
+              std = cStdSetting;
+            }
+          else if ([cStdSetting isKindOfClass: [NSArray class]])
+            {
+              std = [cStdSetting componentsJoinedByString: @" "];
+            }
+
+          if ([std length] == 0)
+            {
+              id gccCStdSetting = [bs objectForKey: @"GCC_C_LANGUAGE_STANDARD"];
+              if ([gccCStdSetting isKindOfClass: [NSString class]])
+                {
+                  std = gccCStdSetting;
+                }
+              else if ([gccCStdSetting isKindOfClass: [NSArray class]])
+                {
+                  std = [gccCStdSetting componentsJoinedByString: @" "];
+                }
+            }
+
+          if ([std length] == 0)
+            {
+              std = [NSString stringForEnvironmentVariable: @"CLANG_C_LANGUAGE_STANDARD"
+                                              defaultValue: @""];
+            }
+
+          if ([std length] == 0)
+            {
+              std = [NSString stringForEnvironmentVariable: @"GCC_C_LANGUAGE_STANDARD"
+                                              defaultValue: @""];
+            }
+
+          if ([std length] > 0)
+            {
+              if([std isEqualToString:@"compiler-default"] == YES)
+                {
+		  std = @"gnu99";
+                }
+              objCflags = [NSString stringWithFormat: @"%@ -std=%@",
+                                    objCflags, std];
+            }
+        }
+
+      if ([ft isEqualToString: @"sourcecode.cpp.cpp"] ||
+          [ft isEqualToString: @"sourcecode.cpp.objcpp"])
+        {
+          id cppStdSetting = [bs objectForKey: @"CLANG_CXX_LANGUAGE_STANDARD"];
+          NSString *cppStd = @"";
+
+          if ([cppStdSetting isKindOfClass: [NSString class]])
+            {
+              cppStd = cppStdSetting;
+            }
+          else if ([cppStdSetting isKindOfClass: [NSArray class]])
+            {
+              cppStd = [cppStdSetting componentsJoinedByString: @" "];
+            }
+
+          if ([cppStd length] == 0)
+            {
+              id gccCppStdSetting = [bs objectForKey: @"GCC_CPLUSPLUS_LANGUAGE_STANDARD"];
+              if ([gccCppStdSetting isKindOfClass: [NSString class]])
+                {
+                  cppStd = gccCppStdSetting;
+                }
+              else if ([gccCppStdSetting isKindOfClass: [NSArray class]])
+                {
+                  cppStd = [gccCppStdSetting componentsJoinedByString: @" "];
+                }
+            }
+
+          if ([cppStd length] == 0)
+            {
+              cppStd = [NSString stringForEnvironmentVariable: @"CLANG_CXX_LANGUAGE_STANDARD"
+                                                 defaultValue: @""];
+            }
+
+          if ([cppStd length] == 0)
+            {
+              cppStd = [NSString stringForEnvironmentVariable: @"GCC_CPLUSPLUS_LANGUAGE_STANDARD"
+                                                 defaultValue: @""];
+            }
+
+          if ([cppStd isEqualToString: @"compiler-default"] == YES)
+            {
+              cppStd = @"gnu++98";
+            }
+
+          if ([cppStd length] > 0)
+            {
+              objCflags = [NSString stringWithFormat: @"%@ -std=%@",
+                                    objCflags, cppStd];
+            }
+
         }
 
       // remove flags incompatible with gnustep...
       objCflags = [objCflags stringByReplacingOccurrencesOfString: @"-std=gnu11" withString: @""];
       headerSearchPaths = [headerSearchPaths stringByReplacingEnvironmentVariablesWithValues];
+
+      id otherCFlagsSetting = [bs objectForKey: @"OTHER_CFLAGS"];
+      id otherCxxFlagsSetting = [bs objectForKey: @"OTHER_CPLUSPLUSFLAGS"];
+      NSString *otherCFlags = @"";
+      NSString *otherCxxFlags = @"";
+
+      if ([otherCFlagsSetting isKindOfClass: [NSString class]])
+        {
+          otherCFlags = otherCFlagsSetting;
+        }
+      else if ([otherCFlagsSetting isKindOfClass: [NSArray class]])
+        {
+          otherCFlags = [otherCFlagsSetting componentsJoinedByString: @" "];
+        }
+
+      if ([otherCxxFlagsSetting isKindOfClass: [NSString class]])
+        {
+          otherCxxFlags = otherCxxFlagsSetting;
+        }
+      else if ([otherCxxFlagsSetting isKindOfClass: [NSArray class]])
+        {
+          otherCxxFlags = [otherCxxFlagsSetting componentsJoinedByString: @" "];
+        }
+
+      otherCFlags = [otherCFlags stringByReplacingEnvironmentVariablesWithValues];
+      otherCxxFlags = [otherCxxFlags stringByReplacingEnvironmentVariablesWithValues];
+      if ([otherCxxFlags length] > 0)
+        {
+          otherCxxFlags = [otherCxxFlags stringByReplacingOccurrencesOfString: @"$(OTHER_CFLAGS)"
+                                                                     withString: otherCFlags];
+          otherCxxFlags = [otherCxxFlags stringByReplacingOccurrencesOfString: @"${OTHER_CFLAGS}"
+                                                                     withString: otherCFlags];
+        }
+
+      NSString *projectLanguageFlags = otherCFlags;
+      if ([ft isEqualToString: @"sourcecode.cpp.cpp"] ||
+          [ft isEqualToString: @"sourcecode.cpp.objcpp"])
+        {
+          if ([otherCxxFlags length] > 0)
+            {
+              projectLanguageFlags = otherCxxFlags;
+            }
+
+        }
+
+      NSString *effectiveAdditionalCFlags = additionalCFlags;
+      if ([warningCflags length] > 0)
+        {
+          effectiveAdditionalCFlags = [NSString stringWithFormat: @"%@ %@",
+                                                             effectiveAdditionalCFlags,
+                                                             warningCflags];
+        }
+      if ([projectLanguageFlags length] > 0)
+        {
+          effectiveAdditionalCFlags = [NSString stringWithFormat: @"%@ %@",
+                                                             effectiveAdditionalCFlags,
+                                                             projectLanguageFlags];
+        }
       
       NSString *configString = [context objectForKey: @"CONFIG_STRING"];
       NSString *buildTemplate = nil;
@@ -800,11 +949,11 @@ static NSLock *lock = nil;
                                          [errorOutPath stringByAddingQuotationMarks],
 					 [compilePath stringByAddingQuotationMarks],
 					 objCflags,
-					 additionalCFlags,
-					 configString,
+					 effectiveAdditionalCFlags,
                                          parentHeaderSearchPaths,
 					 headerSearchPaths,
                                          subdirHeaderSearchPaths,
+					 configString,
 					 [outputPath stringByAddingQuotationMarks]];
       NSDictionary *buildPathAttributes =  [manager attributesOfItemAtPath: buildPath
                                                                      error: &error];
