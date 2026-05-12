@@ -474,25 +474,44 @@ static NSLock *lock = nil;
   return result;
 }
 
-- (NSArray *) substituteSearchPaths: (NSArray *)array
+- (NSArray *) substituteSearchPaths: (id)pathsSetting
                           buildPath: (NSString *)buildPath
 {
   GSXCBuildContext *context = [GSXCBuildContext sharedBuildContext];
-  NSMutableArray *result = [NSMutableArray arrayWithCapacity: [array count]];
-  NSMutableDictionary *dict = [NSMutableDictionary dictionaryWithCapacity: [array count]];
+  NSMutableArray *basePaths = [NSMutableArray array];
+  NSMutableArray *result = nil;
+  NSMutableDictionary *dict = nil;
   XCConfigurationList *list = [context objectForKey: @"buildConfig"];
-  NSMutableArray *allHeaders = [NSMutableArray arrayWithArray: array];
+  NSMutableArray *allHeaders = nil;
   NSDictionary *plistFile = [context config];
   NSArray *headerPaths = [plistFile objectForKey: @"headerPaths"];
 
+  if ([pathsSetting isKindOfClass: [NSArray class]])
+    {
+      [basePaths addObjectsFromArray: pathsSetting];
+    }
+  else if ([pathsSetting isKindOfClass: [NSString class]] &&
+           [pathsSetting length] > 0)
+    {
+      [basePaths addObject: pathsSetting];
+    }
+
+  result = [NSMutableArray arrayWithCapacity: [basePaths count]];
+  dict = [NSMutableDictionary dictionaryWithCapacity: [basePaths count]];
+  allHeaders = [NSMutableArray arrayWithArray: basePaths];
+
   XCBuildConfiguration *config = [[list buildConfigurations] objectAtIndex: 0];
   NSDictionary *buildSettings = [config buildSettings];
-  NSMutableArray *headers = [buildSettings objectForKey: @"HEADER_SEARCH_PATHS"];
+  id headersSetting = [buildSettings objectForKey: @"HEADER_SEARCH_PATHS"];
 
-  if ([headers isKindOfClass: [NSArray class]] &&
-      headers != nil)
+  if ([headersSetting isKindOfClass: [NSArray class]])
     {
-      [allHeaders addObjectsFromArray: headers];
+      [allHeaders addObjectsFromArray: headersSetting];
+    }
+  else if ([headersSetting isKindOfClass: [NSString class]] &&
+           [headersSetting length] > 0)
+    {
+      [allHeaders addObject: headersSetting];
     }
 
   if ([headerPaths isKindOfClass: [NSArray class]] &&
@@ -921,6 +940,19 @@ static NSLock *lock = nil;
                                                              effectiveAdditionalCFlags,
                                                              projectLanguageFlags];
         }
+
+#ifndef __APPLE__
+      if ([ft isEqualToString: @"sourcecode.c.objc"] ||
+          [ft isEqualToString: @"sourcecode.cpp.objcpp"])
+        {
+          NSString *cfCompatDefines = @"-DkCFBundleVersionKey=@\\\"CFBundleVersion\\\" "
+                                      "-D'CFBundleGetMainBundle()=[NSBundle mainBundle]' "
+                                      "-D'CFBundleGetValueForInfoDictionaryKey(bundle,key)=[(bundle) objectForInfoDictionaryKey:(NSString *)(key)]'";
+          effectiveAdditionalCFlags = [NSString stringWithFormat: @"%@ %@",
+                                                             effectiveAdditionalCFlags,
+                                                             cfCompatDefines];
+        }
+#endif
       
       NSString *configString = [context objectForKey: @"CONFIG_STRING"];
       NSString *buildTemplate = nil;

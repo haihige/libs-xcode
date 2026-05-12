@@ -59,10 +59,29 @@
     {
       NSString *path = [[file fileRef] path];
       NSString *srcFile = [[file fileRef] buildPath];
+      NSString *linkSource = srcFile;
       NSString *dstFile = [derivedSourceHeaderDir stringByAppendingPathComponent: [path lastPathComponent]];
-      BOOL copyResult = [defaultManager copyItemAtPath: srcFile
+      BOOL copyResult = YES;
+
+      if ([srcFile isAbsolutePath] == NO)
+	{
+	  linkSource = [[[NSFileManager defaultManager] currentDirectoryPath]
+	                stringByAppendingPathComponent: srcFile];
+	}
+
+      if ([defaultManager fileExistsAtPath: dstFile])
+	{
+	  [defaultManager removeItemAtPath: dstFile error: NULL];
+	}
+
+      copyResult = [defaultManager createSymbolicLinkAtPath: dstFile
+					   pathContent: linkSource];
+      if (copyResult == NO)
+	{
+	  copyResult = [defaultManager copyItemAtPath: srcFile
 						toPath: dstFile
 						 error: &error];
+	}
       xcputs([[NSString stringWithFormat: @"\tCopy %s%@%s -> %s%@%s", YELLOW, srcFile, RESET, GREEN, dstFile, RESET] cString]);
       if(!copyResult)
 	{
