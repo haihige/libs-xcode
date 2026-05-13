@@ -30,6 +30,7 @@
 #import "NSArray+Additions.h"
 #import "NSString+PBXAdditions.h"
 #import "PBXTarget.h"
+#import "PBXTargetDependency.h"
 
 #import "GSXCCommon.h"
 
@@ -151,6 +152,48 @@
             {
               [paths addObject: candidate];
             }
+        }
+    }
+
+  return [paths arrayByRemovingDuplicateEntries];
+}
+
+- (NSArray *) dependencyProductSearchPaths
+{
+  GSXCBuildContext *context = [GSXCBuildContext sharedBuildContext];
+  NSFileManager *fm = [NSFileManager defaultManager];
+  NSMutableArray *paths = [NSMutableArray array];
+  NSString *projectRoot = [context objectForKey: @"PROJECT_ROOT"];
+  NSString *buildRoot = nil;
+  NSEnumerator *en = [[[self target] dependencies] objectEnumerator];
+  PBXTargetDependency *dependency = nil;
+
+  if ([projectRoot length] == 0)
+    {
+      projectRoot = @".";
+    }
+
+  buildRoot = [projectRoot stringByAppendingPathComponent: @"build"];
+
+  while ((dependency = [en nextObject]) != nil)
+    {
+      PBXNativeTarget *depTarget = [dependency target];
+      NSString *targetName = [depTarget name];
+      NSString *candidate = nil;
+      BOOL isDir = NO;
+
+      if ([targetName length] == 0)
+        {
+          continue;
+        }
+
+      candidate = [[[buildRoot stringByAppendingPathComponent: targetName]
+                             stringByAppendingPathComponent: @"Products"]
+                             stringByStandardizingPath];
+
+      if ([fm fileExistsAtPath: candidate isDirectory: &isDir] && isDir)
+        {
+          [paths addObject: candidate];
         }
     }
 
@@ -390,6 +433,7 @@
   NSEnumerator *en = [_files objectEnumerator];
   id file = nil;
   NSString *lpath = nil;
+  NSArray *dependencyPaths = [self dependencyProductSearchPaths];
   GSXCBuildContext *context = [GSXCBuildContext sharedBuildContext];
   NSDictionary *configDict = [context configForTargetName: [[self target] name]];
   NSArray *linkerPaths = [configDict objectForKey: @"linkerPaths"];
@@ -414,6 +458,13 @@
   while((lpath = [en nextObject]) != nil)
     {
       linkString = [linkString stringByAppendingString: [NSString stringWithFormat: @"-L%@ ", lpath]];
+    }
+
+  en = [dependencyPaths objectEnumerator];
+  while ((lpath = [en nextObject]) != nil)
+    {
+      linkString = [linkString stringByAppendingString: [NSString stringWithFormat: @"-L%@ ", lpath]];
+      xcprintf("\t* Linking from dependency output: %s\n", [lpath cString]);
     }
   
   en = [_files objectEnumerator];
