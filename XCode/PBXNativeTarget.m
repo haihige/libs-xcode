@@ -405,16 +405,45 @@
                                    stringByAppendingPathComponent:@"Current"];
   NSString *uninstalledProductsDir = [outputDir stringByAppendingPathComponent: @"Products"];  
   NSString *fullPath = [uninstalledProductsDir stringByAppendingPathComponent: [_productReference path]];  
+  NSString *sourceFrameworksDir = [fullPath stringByAppendingPathComponent: @"Versions/Current/Frameworks"];
+  NSString *destFrameworksDir = [productDir stringByAppendingPathComponent: @"Versions/Current/Frameworks"];
   NSError *error = nil;
   NSFileManager *fileManager = [NSFileManager defaultManager];
   NSString *fileName = [fullPath lastPathComponent];  
   NSString *execName = [fileName stringByDeletingPathExtension];
+  BOOL isDir = NO;
+
+  [fileManager createDirectoryAtPath: frameworkPath
+         withIntermediateDirectories: YES
+                          attributes: nil
+                               error: NULL];
+  [fileManager createDirectoryAtPath: headersDir
+         withIntermediateDirectories: YES
+                          attributes: nil
+                               error: NULL];
+  [fileManager createDirectoryAtPath: librariesDir
+         withIntermediateDirectories: YES
+                          attributes: nil
+                               error: NULL];
   
   // Copy
   [fileManager removeItemAtPath: productDir error: NULL];
   [fileManager copyItemAtPath: fullPath
 		       toPath: productDir
 			error: &error];
+
+  if ([fileManager fileExistsAtPath: sourceFrameworksDir isDirectory: &isDir] && isDir)
+    {
+      [fileManager removeItemAtPath: destFrameworksDir error: NULL];
+      [fileManager copyItemAtPath: sourceFrameworksDir
+			   toPath: destFrameworksDir
+			    error: &error];
+      if (error != nil)
+	{
+	  xcputs([[NSString stringWithFormat: @"Error while copying embedded framework dependencies: %@", error] cString]);
+	  error = nil;
+	}
+    }
   
   // Create links...
   [fileManager removeItemAtPath: [headersDir stringByAppendingPathComponent: execName]
