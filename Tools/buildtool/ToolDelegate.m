@@ -30,6 +30,7 @@
 #import <XCode/NSString+PBXAdditions.h>
 #import <XCode/XCWorkspaceParser.h>
 #import <XCode/XCWorkspace.h>
+#import <XCode/XCFileRef.h>
 
 #import "ToolDelegate.h"
 #import "ArgPair.h"
@@ -175,6 +176,12 @@ NSString *resolveProjectName(BOOL *isProject)
 	      parse_val = YES;
 	    }
 
+	  if ([obj isEqualToString: @"targets"])
+	    {
+	      [pair setArgument: obj];
+	      parse_val = NO;
+	    }
+
 	  // If there is no parameter for the argument, set it anyway...
 	  if (parse_val == NO)
 	    {
@@ -298,6 +305,12 @@ NSString *resolveProjectName(BOOL *isProject)
 	  function = @"save";
 	  ASSIGN(parameter, [opt value]);
 	}
+
+      opt = [args objectForKey: @"targets"];
+      if (opt != nil)
+	{
+	  function = @"targets";
+	}
       
       // if no function is specified, build is the default...
       if (function == nil)
@@ -305,6 +318,62 @@ NSString *resolveProjectName(BOOL *isProject)
 	  function = @"build";
 	}
       
+      if ([function isEqualToString: @"targets"])
+	{
+	  if (isProject)
+	    {
+	      PBXCoder *coder = [[PBXCoder alloc] initWithContentsOfFile: fileName];
+	      PBXContainer *container = [coder unarchive];
+	      id project = [container rootObject];
+	      NSArray *targets = [project targets];
+	      NSEnumerator *en = [targets objectEnumerator];
+	      id target = nil;
+	      NSUInteger count = 0;
+
+	      [self postMessage: @"Available targets in %@", fileName];
+	      while ((target = [en nextObject]) != nil)
+		{
+		  count++;
+		  [self postMessage: @"\t* %@", [target name]];
+		}
+
+	      if (count == 0)
+		{
+		  [self postMessage: @"\t* (none)"];
+		}
+	    }
+	  else
+	    {
+	      XCWorkspaceParser *p = [XCWorkspaceParser parseWorkspaceFile: fileName];
+	      XCWorkspace *w = [p workspace];
+	      NSArray *refs = [w fileRefs];
+	      NSEnumerator *ren = [refs objectEnumerator];
+	      XCFileRef *ref = nil;
+	      NSUInteger count = 0;
+
+	      [self postMessage: @"Available targets in %@", fileName];
+	      while ((ref = [ren nextObject]) != nil)
+		{
+		  NSArray *targets = [ref targets];
+		  NSEnumerator *ten = [targets objectEnumerator];
+		  id target = nil;
+
+		  while ((target = [ten nextObject]) != nil)
+		    {
+		      count++;
+		      [self postMessage: @"\t* %@ (%@)", [target name], [ref location]];
+		    }
+		}
+
+	      if (count == 0)
+		{
+		  [self postMessage: @"\t* (none)"];
+		}
+	    }
+
+	  return;
+	}
+
       // Execute..
       if (function != nil)
 	{

@@ -12,7 +12,7 @@ buildtool \- build macOS projects that use xcode
 .B buildtool
 .RB [clean | generate
 .RB [makefile|cmake|projectbuilder|projectcenter]
-.RB | build]
+.RB | build | targets]
 .RB [filename]
 .P
 .SH DESCRIPTION
@@ -42,6 +42,10 @@ clean the current project directory
 .IP "generate"
 generate one of the following... cmake, makefile, projectbuilder, projectcenter types of files.
 if none is specified it will assume you are trying to generate a makefile.
+.IP "targets"
+list available targets in the .xcodeproj file in the current directory
+.I filename
+if optionally specified
 .PP
 .SH EXAMPLES
 Build the project in the current working directory
@@ -62,6 +66,10 @@ To generate a gnumakefile, cmake, etc...
 .I buildtool generate
 .PP
 You can optionally use any of the types mentioned above after the generate option.
+.PP
+To list available targets
+.PP
+.I buildtool targets
 .SH BUGS
 .B buildtool
 can currently open most project types.  If you find any that it can't handle or get any
