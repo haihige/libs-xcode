@@ -391,11 +391,25 @@ NSString *resolveProjectName(BOOL *isProject)
 		{
 		  PBXCoder *coder = nil;
 		  PBXContainer *container = nil;	  
+		  ArgPair *targetArg = [args objectForKey: @"-target"];
 
 		  // Unarchive...
 		  coder = [[PBXCoder alloc] initWithContentsOfFile: fileName];
 		  container = [coder unarchive];
 		  [container setParameter: parameter];
+		  if ([function isEqualToString: @"build"]
+		      && targetArg != nil
+		      && [[targetArg value] length] > 0)
+		    {
+		      id project = [container rootObject];
+		      SEL setSelectedBuildTarget = @selector(setSelectedBuildTarget:);
+
+		      if ([project respondsToSelector: setSelectedBuildTarget])
+			{
+			  [project performSelector: setSelectedBuildTarget
+				      withObject: [targetArg value]];
+			}
+		    }
 		  		  
 		  [coder setDelegate: self];
 		  

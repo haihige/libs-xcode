@@ -53,6 +53,7 @@
   NSDictionary *_ctx;
 
   NSString *_filename;
+  NSString *_selectedBuildTarget;
   NSMutableArray *_arrangedTargets;
   BOOL _minimizedProjectReferenceProxies;
   NSString *_preferredProjectObjectVersion;
@@ -217,6 +218,16 @@
  * Returns the filename for this project.
  */
 - (NSString *) filename;
+
+/**
+ * Sets an optional target name to limit build execution.
+ */
+- (void) setSelectedBuildTarget: (NSString *)targetName;
+
+/**
+ * Returns the selected target name for build execution.
+ */
+- (NSString *) selectedBuildTarget;
 
 /**
  * Plans the build by calculating dependencies.

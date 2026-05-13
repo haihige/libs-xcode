@@ -80,6 +80,10 @@
 
 - (NSMutableArray *) arrangedTargets;
 
+- (PBXTarget *) targetWithName: (NSString *)name;
+
+- (NSMutableArray *) arrangedTargetsForTarget: (PBXTarget *)target;
+
 @end
 
 @implementation PBXProject (Private)
@@ -141,6 +145,37 @@
   NSDebugLog(@"arrangedTarget = %ld, targets = %ld", [_arrangedTargets count], [[self targets] count]);
 
   return _arrangedTargets;
+}
+
+- (PBXTarget *) targetWithName: (NSString *)name
+{
+  NSEnumerator *en = [[self targets] objectEnumerator];
+  PBXTarget *target = nil;
+
+  while ((target = [en nextObject]) != nil)
+    {
+      if ([[target name] isEqualToString: name])
+	{
+	  return target;
+	}
+    }
+
+  return nil;
+}
+
+- (NSMutableArray *) arrangedTargetsForTarget: (PBXTarget *)target
+{
+  NSMutableArray *result = [NSMutableArray arrayWithCapacity: 100];
+
+  [self recurseTargetDependencies: [target prerequisiteTargets]
+			 forTarget: target
+			    result: result];
+  if ([result containsObject: target] == NO)
+    {
+      [result addObject: target];
+    }
+
+  return result;
 }
 
 @end
@@ -327,6 +362,16 @@
   return _filename;
 }
 
+- (void) setSelectedBuildTarget: (NSString *)targetName
+{
+  ASSIGN(_selectedBuildTarget, targetName);
+}
+
+- (NSString *) selectedBuildTarget
+{
+  return _selectedBuildTarget;
+}
+
 - (void) plan
 {
   xcprintf("=== Planning build -- Recursing dependencies...");
@@ -367,11 +412,37 @@
 {
   NSString *fn = [[[self container] filename]
 		   stringByDeletingLastPathComponent];
+  PBXTarget *selected = nil;
 
   xcprintf("=== Building Project %s%s%s%s\n", BOLD, GREEN, [fn cString], RESET);
   [_buildConfigurationList applyDefaultConfiguration];
   [self _sourceRootFromMainGroup];
-  [self plan];
+  if (_selectedBuildTarget != nil && [_selectedBuildTarget length] > 0)
+    {
+      selected = [self targetWithName: _selectedBuildTarget];
+      if (selected == nil)
+	{
+	  NSEnumerator *all = [[self targets] objectEnumerator];
+	  PBXTarget *t = nil;
+
+	  xcprintf("*** Unknown target %s%s%s\n", BOLD, [_selectedBuildTarget cString], RESET);
+	  xcputs("*** Available targets:");
+	  while ((t = [all nextObject]) != nil)
+	    {
+	      xcprintf("\t* %s\n", [[t name] cString]);
+	    }
+
+	  return NO;
+	}
+
+      _arrangedTargets = [self arrangedTargetsForTarget: selected];
+      xcprintf("=== Planning build for target %s%s%s... %ld targets - completed\n",
+	       BOLD, [[selected name] cString], RESET, (long)[_arrangedTargets count]);
+    }
+  else
+    {
+      [self plan];
+    }
 
   // Show list of targets...
   NSEnumerator *ten = [_arrangedTargets objectEnumerator];

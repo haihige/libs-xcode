@@ -33,6 +33,8 @@ in the current working directory or, if no filename is specified, will build usi
 first one it finds.
 .PP
 .SH OPTIONS
+.IP "-target targetName"
+when used with the default build operation, build only the named target and its dependencies
 .IP "build"
 build the .xcodeproj file in the current directory
 .I filename
@@ -56,6 +58,10 @@ Build the project in the current working directory
 .PP
 .I buildtool build
 .B filename.xcodeproj
+.PP
+Build only one target and its dependencies
+.PP
+.I buildtool -target TargetName
 .PP
 To clean the project directory
 .PP
