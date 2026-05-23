@@ -941,7 +941,7 @@ static NSLock *lock = nil;
                                                              projectLanguageFlags];
         }
 
-#ifndef __APPLE__
+      // Map CFBundle-style macros to NSBundle for GNUstep compatibility
       if ([ft isEqualToString: @"sourcecode.c.objc"] ||
           [ft isEqualToString: @"sourcecode.cpp.objcpp"])
         {
@@ -952,7 +952,6 @@ static NSLock *lock = nil;
                                                              effectiveAdditionalCFlags,
                                                              cfCompatDefines];
         }
-#endif
       
       NSString *configString = [context objectForKey: @"CONFIG_STRING"];
       NSString *buildTemplate = nil;
